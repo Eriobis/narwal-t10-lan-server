@@ -97,7 +97,7 @@ of it, so keep one from your own firmware dump.
 
 - `adb exec-out` is unsupported by this 2021 adbd and always returns `error: closed`. Use `adb shell -x`.
 - adb push/pull is reliable over **TCP**, flaky over USB. Shell works on both. `narwal.sh` handles this.
-- A deeply idle robot will not accept adb at all. Start a task from the app or the dock button to wake it.
+- A deeply idle robot will not accept adb at all. Wake it first (start a task, or press a button on the robot). See **Wireless adb** and **Wakelock** in the README.
 - The RTC battery is dead: the clock resets to 1970 each boot until NTP, so file mtimes on the robot are unreliable.
 - `cmd:1` (dock) is a **toggle**. Sent while docked, it undocks.
 - The robot's IP changes with DHCP. `narwal.sh` reads it over USB and caches it in `scripts/.narwal-last-ip`.

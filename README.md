@@ -37,6 +37,42 @@ Open **http://&lt;server-ip&gt;:8099/** on your phone.
 | open a root shell / find the robot's IP | `./scripts/narwal.sh shell` / `./scripts/narwal.sh ip` |
 | try the UI with no robot | `./run.sh` (mock robot) |
 
+### Wireless adb
+
+After step 1 the robot runs `adbd` on **TCP port 5555** as well as USB, so the cable
+is only needed once. Wi-Fi comes from the `--ssid/--psk` you passed to
+`first-time-setup.sh`, or from pairing it with the Narwal app. Find its IP once over USB,
+then connect over Wi-Fi:
+
+```bash
+./scripts/narwal.sh ip               # over USB; cached in scripts/.narwal-last-ip
+./scripts/narwal.sh connect          # adb over Wi-Fi + wakelock + status
+adb connect <robot-ip>:5555          # or plain adb (this PC's key was installed in step 1)
+```
+
+The robot's IP comes from DHCP and can change. Reserve it on your router (the
+robot's DHCP hostname is `NarwalRobotics` when it joined via `first-time-setup.sh`), or run `narwal.sh ip` over USB again.
+Only the PC whose `~/.android/adbkey.pub` was installed in step 1 is accepted. To add
+another one, append its key to `/mnt/UDISK/adb_keys` on the robot.
+
+### Wakelock
+
+When idle, the robot suspends its CPU. adb then drops on **both** USB and Wi-Fi, which
+looks like "adb kicks me out after a second". A wakelock keeps it awake:
+
+```bash
+./scripts/narwal.sh wakelock on      # keep awake (also done by `narwal.sh connect`)
+./scripts/narwal.sh wakelock off     # let it sleep normally again
+```
+
+- The wakelock is named `narwaldbg`. Manually, on the robot:
+  `echo narwaldbg > /sys/power/wake_lock` (release with `> /sys/power/wake_unlock`).
+- `rc.local` takes it **at every boot**, so `wakelock off` lasts until the next reboot. To
+  turn it off for good, delete the `wake_lock` line from `/etc/rc.local` on the robot.
+- If the robot is already asleep it ignores adb entirely. Wake it first: start a
+  task from the server UI or press a button, then run `narwal.sh connect` (it retries
+  for about 60 s). All the `scripts/` go through adb, so they need it too.
+
 Optional: copy a dump of the robot's `/userdata/usr/data` (its `maps/` and
 `communicator/` folders) into `bundled-map/`, or set `NARWAL_MAP_PATH=/path/to/dump`.
 It is shown before the robot first reports in. Maps and `data/` are git-ignored, so your
