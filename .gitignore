@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv*/
+
+# Runtime state: persisted maps, editor sidecars, history, robot uploads,
+# cloud-traffic logs, and the generated TLS key (data/maps/tls/) — never commit.
+data/
+
+# Personal robot maps (house floor plan, room names, wifi SSID) — never commit.
+# Put your dump in bundled-map/ locally; docker-compose mounts it.
+bundled-map/
+mymap/
+
+# Robot IP cache written by scripts/narwal.sh
+.narwal-last-ip
+
+# Frontend build + deps are under frontend/.gitignore

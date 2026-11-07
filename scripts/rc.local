@@ -1,0 +1,60 @@
+# ===== Narwal T10 local-access rc.local  (toolkit template) =====
+# Installed to /etc/rc.local on the robot; runs as root at boot (`sh /etc/rc.local`).
+# Gives: root adb shell + adb over USB & TCP:5555 + a wakelock (so the robot doesn't
+# suspend out from under adb) + optional wifi self-join. /bin/login is NOT modified.
+# scripts/first-time-setup.sh fills __SSID__/__PSK__ (or strips the wifi block if no creds).
+
+# 0) wakelock: stop idle CPU suspend (otherwise adb drops on BOTH USB and TCP).
+#    Delete this line if you want normal idle power management instead of stable adb.
+echo narwaldbg > /sys/power/wake_lock 2>/dev/null
+
+# 1) adb shell -> real root shell. adbd execs /bin/adb_shell; we point it at ash.
+#    (This is adbd's own shell wrapper, NOT the /bin/login auth gate.)
+cat > /bin/adb_shell <<'EOS'
+#!/bin/sh
+export ENV='/etc/adb_profile'
+if [ "$1" = '-c' ]; then
+	exec /bin/ash -c "$2"
+else
+	exec /bin/ash
+fi
+EOS
+chmod 755 /bin/adb_shell
+
+# 2) USB adb gadget, adb-ONLY (eject mass-storage LUNs so ep1in-bulk isn't contended,
+#    which otherwise makes USB adb flaky).
+if [ -d /sys/class/android_usb/android0 ]; then
+	echo 0    > /sys/class/android_usb/android0/enable
+	for l in /sys/class/android_usb/android0/f_mass_storage/lun*/file; do
+		[ -e "$l" ] && : > "$l" 2>/dev/null
+	done
+	echo 18d1 > /sys/class/android_usb/android0/idVendor
+	echo D002 > /sys/class/android_usb/android0/idProduct
+	echo adb  > /sys/class/android_usb/android0/functions
+	echo 1    > /sys/class/android_usb/android0/enable
+fi
+
+# 3) adbd on USB + TCP:5555 (key-authed via /mnt/UDISK/adb_keys).
+killall adbd 2>/dev/null
+ADB_TRANSPORT_PORT=5555 /bin/adbd -D &
+
+#WIFI_BEGIN
+# 4) wifi self-join (optional) -> gives adb-over-TCP on the LAN without the app.
+cat > /userdata/usr/conf/network/wpa_supplicant.conf <<'EOW'
+ctrl_interface=/var/run/wpa_supplicant
+update_config=1
+network={
+	ssid="__SSID__"
+	psk="__PSK__"
+	key_mgmt=WPA-PSK
+	scan_ssid=1
+}
+EOW
+killall wpa_supplicant 2>/dev/null
+/usr/sbin/wpa_supplicant -Dnl80211 -iwlan0 -c /userdata/usr/conf/network/wpa_supplicant.conf -B
+sleep 5
+killall udhcpc 2>/dev/null
+/sbin/udhcpc -i wlan0 -h NarwalRobotics -S -T 1 -t 30 -A 5 &
+#WIFI_END
+
+exit 0

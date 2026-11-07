@@ -1,0 +1,30 @@
+services:
+  narwal-lan-server:
+    build: .
+    image: narwal-lan-server:latest
+    container_name: narwal-lan-server
+    ports:
+      - "8099:8099"
+      - "8443:8443"     # TLS upload endpoint for the robot's log/bag uploads (transport=cloud)
+    environment:
+      # cloud = LAN fake-cloud (robot repointed with scripts/set-server-ip.sh)
+      # real  = static map from the dump below; mock = demo without a robot
+      NARWAL_TRANSPORT: cloud
+      NARWAL_MAP_DIR: /app/bundled-map
+      # one map id + data dir shared with the venv server (./data/maps) so room
+      # names, zones and history are the same whichever way it's run
+      NARWAL_MAP_ID: house-map-20261102
+      NARWAL_DATA_DIR: /app/data/maps
+      # --- Home Assistant (uncomment to publish MQTT discovery) ---
+      # NARWAL_HA: "1"
+      # NARWAL_MQTT_HOST: 192.168.5.113
+      # NARWAL_MQTT_PORT: "1883"
+      # --- live robot over TCP (once robot_server.py is deployed) ---
+      # NARWAL_TRANSPORT: tcp
+      # NARWAL_ROBOT_HOST: 192.168.7.210
+    volumes:
+      # edits (room names, no-go zones, clean order) persist here across restarts
+      - ./data:/app/data
+      # your robot's map dump (optional; never committed). Default: ./bundled-map
+      - ${NARWAL_MAP_PATH:-./bundled-map}:/app/bundled-map:ro
+    restart: unless-stopped

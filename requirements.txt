@@ -1,0 +1,33 @@
+# Narwal T10 LAN server (Python 3) -- exact pins.
+# All released well before 2025 and long stable.
+
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+paho-mqtt==2.1.0
+
+# Reads the robot's map.bag (ROS1 bag -> nav_msgs/OccupancyGrid) with no ROS
+# install. Only imported for --transport real.
+rosbags==0.11.9
+
+# Map vectorization (GET /api/map_vector): room polygons + wall polylines in
+# world coords. opencv-headless (contour hierarchy for holes, Hough, drawing for
+# the server-side self-check) + shapely (simplify/validity) + numpy. This is the
+# lighter set vs scikit-image (which pulls scipy/networkx/imageio/tifffile).
+# Needs a wheel-only install -- build in the Python 3.11 image/.venv311, NOT the
+# host's 3.14 (no native wheels). Imported only when vectorizing a real map.
+numpy==1.26.4
+shapely==2.0.4
+opencv-python-headless==4.9.0.80
+
+# fastapi pulls starlette + pydantic; uvicorn[standard] pulls the websockets
+# lib used by the /ws endpoint. Those transitive deps resolve to the versions
+# fastapi/uvicorn pin internally -- no need to pin them here.
+#
+# NOTES
+#  * No numpy / Pillow / PyYAML on purpose: occupancy grids are plain Python
+#    lists, maps persist as ROS-standard PGM + hand-written YAML, and the mock's
+#    map_rotate.png is produced by a stdlib-zlib PNG encoder (lan_server/pngutil.py).
+#  * paho-mqtt is only imported when you use --transport mqtt or --ha.
+#  * The React UI lives in frontend/ (its own pinned package.json) and is built
+#    with npm; FastAPI serves the built assets. See README.md.
+python-multipart==0.0.33

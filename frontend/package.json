@@ -1,0 +1,21 @@
+{
+  "name": "narwal-t10-lan-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Phone-first React UI for the de-clouded Narwal T10 LAN server.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "nodemon": "^1.0.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^7.1.0"
+  }
+}
