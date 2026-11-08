@@ -20,12 +20,16 @@
 #                                 # (autosaves to /tmp, persists to /userdata on dock). Grabs
 #                                 # pita_grid_seg.map (rooms) + room-attr.data + map_rotate.png.
 #
-# Env overrides: NARWAL_USB_SERIAL (default 20080411), WAKELOCK (default narwaldbg)
+# Env overrides: NARWAL_IP (robot wifi IP — needed when no USB cable and no cached IP),
+#                NARWAL_USB_SERIAL (default 20080411), WAKELOCK (default narwaldbg)
+#   e.g.  NARWAL_IP=192.168.7.210 ./narwal.sh connect
 set -u
 
 USB="${NARWAL_USB_SERIAL:-20080411}"
 WL="${WAKELOCK:-narwaldbg}"
 IPFILE="$(cd "$(dirname "$0")" && pwd)/.narwal-last-ip"
+# an explicit NARWAL_IP seeds the cache, so later runs work without it
+[ -n "${NARWAL_IP:-}" ] && echo "$NARWAL_IP" > "$IPFILE"
 
 say(){ printf '%s\n' "$*" >&2; }
 
@@ -34,8 +38,10 @@ usb_up(){ adb devices 2>/dev/null | awk -v s="$USB" '$1==s && $2=="device"{f=1} 
 # read wlan0 IP from the robot (over whichever transport answers), cache it
 robot_ip(){
   local ip=""
-  for d in "$USB" "$(cat "$IPFILE" 2>/dev/null):"; do
-    d="${d%:}"; [ -z "$d" ] && continue
+  local cached; cached=$(cat "$IPFILE" 2>/dev/null)
+  [ -n "$cached" ] && adb connect "$cached:5555" >/dev/null 2>&1
+  for d in "$USB" "${cached:+$cached:5555}"; do
+    [ -z "$d" ] && continue
     ip=$(adb -s "$d" shell -x 'ip -4 addr show wlan0 2>/dev/null || ifconfig wlan0 2>/dev/null' 2>/dev/null \
          | tr -d '\r' | grep -oE 'inet (addr:)?[0-9.]+' | grep -oE '[0-9.]+' | grep -v '^255' | head -1)
     [ -n "$ip" ] && break
