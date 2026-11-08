@@ -33,6 +33,9 @@ IPFILE="$(cd "$(dirname "$0")" && pwd)/.narwal-last-ip"
 
 say(){ printf '%s\n' "$*" >&2; }
 
+command -v adb >/dev/null 2>&1 || { say "adb not found — install it (Fedora: sudo dnf install android-tools)."
+  say "The robot only trusts known adb keys: copy ~/.android/adbkey{,.pub} from a trusted host."; exit 127; }
+
 usb_up(){ adb devices 2>/dev/null | awk -v s="$USB" '$1==s && $2=="device"{f=1} END{exit !f}'; }
 
 # read wlan0 IP from the robot (over whichever transport answers), cache it
@@ -59,7 +62,8 @@ tcp_dev(){
   # "no device" even while the robot is plainly connected.
   local cur; cur=$(adb devices 2>/dev/null | awk '$2=="device" && $1 ~ /:5555$/ {print $1; exit}')
   [ -n "$cur" ] && { echo "$cur"; return 0; }
-  local ip; ip=$(robot_ip); [ -z "$ip" ] && return 1
+  local ip; ip=$(robot_ip)
+  [ -z "$ip" ] && { say "robot IP unknown — set NARWAL_IP=<robot wifi ip> (or attach USB once)"; return 1; }
   adb connect "$ip:5555" >/dev/null 2>&1
   echo "$ip:5555"
 }

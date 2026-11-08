@@ -38,7 +38,7 @@ fi
 HASH=$(openssl x509 -hash -noout -in "$CERT")
 
 # 2) trust it on the robot
-"$N" connect >/dev/null 2>&1 || true
+"$N" connect >/dev/null || { echo "   cannot reach the robot over adb (see above). Robot IP: NARWAL_IP=<ip> $0 $*"; exit 1; }
 echo "2) installing cert on the robot"
 "$N" push "$CERT" /etc/ssl/certs/narwal-lan-cloud.crt >/dev/null
 out=$("$N" exec "cd /etc/ssl/certs && for l in *.0; do [ \"\$(readlink \$l)\" = narwal-lan-cloud.crt ] && rm -f \$l; done; ln -sf narwal-lan-cloud.crt $HASH.0 && sync && echo CA_OK" || true); grep -q CA_OK <<<"$out" || { echo "   failed — check ./scripts/narwal.sh status"; exit 1; }
