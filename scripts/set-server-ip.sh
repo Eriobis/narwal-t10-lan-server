@@ -10,7 +10,10 @@
 #      — the robot uploads logs over TLS and checks the cert's IP;
 #   2. installs that cert as trusted on the robot;
 #   3. rewrites the robot's cloud endpoints (websocket + http) to <ip>:<port>;
-#   4. restarts the robot's cloud bridge so it connects to the LAN server.
+#   4. re-points the robot's queue of failed HTTP calls — pita_communicator stores
+#      them with the absolute URL and retries them forever, so without this it
+#      keeps knocking on the old server;
+#   5. restarts the robot's cloud bridge so it connects to the LAN server.
 # The originals are saved once as *.narwal-orig; restore with ./scripts/restore-cloud.sh.
 #
 # Afterwards restart the LAN server so it loads the new cert (docker compose restart).
@@ -56,6 +59,7 @@ cat > http_env_us.json <<EOF
 {\"env\":\"prod\",\"config\":{\"prod\":{\"http\":{\"base_url\":\"$HTTP\"},\"upload_file\":{\"server\":\"amazon\"}},
  \"test\":{\"http\":{\"base_url\":\"$HTTP\"},\"upload_file\":{\"server\":\"amazon\"}}}}
 EOF
+sed -i 's#\"uri\":\"http://[^\"]*/cloud/#\"uri\":\"$HTTP/#' /userdata/usr/data/communicator/failed_apis/* 2>/dev/null
 sync; /oem/DISK/bin/pita/script/pita_init/pita_communicator_service restart >/dev/null 2>&1; echo LAN_CLOUD_ON" || true); grep -q LAN_CLOUD_ON <<<"$out" || { echo "   failed — check ./scripts/narwal.sh status"; exit 1; }
 
 echo ">>> done. Restart the server so it serves the cert:  docker compose restart"

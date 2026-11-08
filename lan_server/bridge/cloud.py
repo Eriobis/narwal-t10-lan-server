@@ -427,6 +427,9 @@ class CloudBridge(Bridge):
             if state == "docked":
                 note = "already docked (cmd 1 would UNDOCK it)"
             params = {"cmd": CMD_DOCK_TOGGLE}
+        elif cmd == "locate":
+            # the app's "Locate robot": robot plays inform/pos_info.mp3 ("I'm here")
+            svc, params = "/pita/other/pos_info", {}
         elif cmd == "set_fan_speed":
             name = FAN_TO_ROBOT.get(str(args.get("fan_speed")), str(args.get("fan_speed")))
             svc, params = "/pita/config/set_sweep_strength", {"cmd": 10, "name": name}
@@ -511,7 +514,12 @@ class CloudBridge(Bridge):
             q = {k: v[0] for k, v in parse_qs(query).items()}
             name = q.get("file_name") or "file-%d" % int(time.time())
             # https on the TLS upload port (AwsUpload always speaks TLS)
-            url = "https://%s:%d/cloud/upload/%s/%s" % ((host or "192.168.5.100").split(":")[0],
+            # host = the address the robot used to reach us (its Host header), so the
+            # upload goes back to this server whatever IP it runs on.
+            host = host or os.environ.get("NARWAL_PUBLIC_HOST", "")
+            if not host:
+                log.warning("upload grant without a Host header; set NARWAL_PUBLIC_HOST")
+            url = "https://%s:%d/cloud/upload/%s/%s" % (host.split(":")[0],
                                                        self.UPLOAD_TLS_PORT,
                                                    quote(q.get("file_type", "0")), quote(name))
             self._trace("GRANT", url)
